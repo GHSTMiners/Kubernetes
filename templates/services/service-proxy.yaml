@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gotchiminer.fullname" . }}-proxy
+  labels:
+    {{- include "gotchiminer.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.serviceProxy.type }}
+  ports:
+    - port: {{ .Values.serviceProxy.port }}
+      targetPort: 8443
+      protocol: TCP
+      name: http
+  selector:
+    app: gotchiminer-proxy

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gotchiminer.fullname" . }}-server
+  labels:
+    app: gotchiminer-server
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      {{- include "gotchiminer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        date: "{{ now | unixEpoch }}"
+        {{- include "gotchiminer.selectorLabels" . | nindent 8 }}
+        app: gotchiminer-server
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "gotchiminer.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.imageServer.repository }}:{{ .Values.imageServer.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.imageServer.pullPolicy }}
+          env:
+          - name: REDIS_HOST
+            value: {{ include "gotchiminer.fullname" . }}-redis-master
+          - name: REGION_ID
+            value: "{{ .Values.server.regionID }}"
+          - name: MONGOOSE_URI
+            value: mongodb://{{ include "gotchiminer.fullname" .}}-mongodb:27017/gotchiminer
+          - name: SELF_HOSTNAME
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /tmp
+              name: temp-volume
+          livenessProbe:
+            httpGet:
+              port: http
+          readinessProbe:
+            httpGet:
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+      volumes:
+          - emptyDir:
+              sizeLimit: 1Gi
+            name: temp-volume
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,65 @@
+imageServer:
+  repository: ghcr.io/ghstminers/gotchiminer-server
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imageProxy:
+  repository: ghcr.io/ghstminers/colyseus-proxy
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "master"
+
+# Configure the server 
+server:
+  port: 2567
+  regionID: 4
+
+# Proxxy service
+serviceProxy:
+  type: LoadBalancer
+  port: 443
+
+imagePullSecrets: [name: registrypullsecret]
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+redis:
+  architecture: "standalone"
+  auth:
+    enabled: no
+    password: ""
+  master:
+    persistence:
+      enabled: false
+  replica:
+    replicaCount: 0
+    persistence:
+      enabled: false
+
+mongodb:
+  auth:
+    enabled: false
+  persistence:
+    enabled: false

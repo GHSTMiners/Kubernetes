@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gotchiminer.fullname" . }}-proxy
+  labels:
+    {{- include "gotchiminer.labels" . | nindent 4 }}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      {{- include "gotchiminer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        date: "{{ now | unixEpoch }}"
+        {{- include "gotchiminer.selectorLabels" . | nindent 8 }}
+        app: gotchiminer-proxy
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "gotchiminer.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.imageProxy.repository }}:{{ .Values.imageProxy.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.imageProxy.pullPolicy }}
+          volumeMounts:
+          - mountPath: "/ssl"
+            name: proxy-ssl
+            readOnly: true
+
+          env:
+          - name: REDIS_URL
+            value: redis://{{ include "gotchiminer.fullname" . }}-redis-master:6379/0
+          - name: PORT
+            value: "8080"
+          - name: HTTPS_PORT
+            value: "8443"
+          - name: SSL_CERT
+            value: /ssl/crt
+          - name: SSL_KEY
+            value: /ssl/key
+          - name: IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              port: https
+              scheme: HTTPS
+          readinessProbe:
+            httpGet:
+              port: https
+              scheme: HTTPS
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+          - name: proxy-ssl
+            secret:
+              secretName: ssl-cert
